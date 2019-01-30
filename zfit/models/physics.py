@@ -97,11 +97,14 @@ def crystalball_integral(limits, params):
     lower = lower[0]  # obs number 0
     upper = upper[0]
 
-    sqrt_pi_over_two = np.sqrt(np.pi / 2)
-    sqrt2 = np.sqrt(2)
-    result = 0.0
+    sqrt_pi_over_two = ztf.constant(np.sqrt(np.pi / 2))
+    sqrt2 = ztf.constant(np.sqrt(2))
+    result = ztf.constant(0.0)
 
-    use_log = tf.less(tf.abs(n - 1.0), 1e-05)
+    one = ztf.constant(1.0)
+    one_half = ztf.constant(0.5)
+
+    use_log = tf.less(tf.abs(n - one), 1e-05)
     abs_sigma = tf.abs(sigma)
     abs_alpha = tf.abs(alpha)
 
@@ -114,7 +117,7 @@ def crystalball_integral(limits, params):
     def if_false():
         return tmax, tmin
 
-    tmax, tmin = tf.cond(tf.less(alpha, 0), if_true, if_false)
+    tmax, tmin = tf.cond(tf.less(alpha, ztf.constant(0)), if_true, if_false)
 
     def if_true_4():
         result_5, = result,
@@ -126,7 +129,7 @@ def crystalball_integral(limits, params):
 
         def if_true_3():
             result_3 = result_6
-            a = tf.pow(n / abs_alpha, n) * tf.exp(-0.5 * tf.square(abs_alpha))
+            a = tf.pow(n / abs_alpha, n) * tf.exp(-one_half * tf.square(abs_alpha))
             b = n / abs_alpha - abs_alpha
 
             def if_true_1():
@@ -136,8 +139,8 @@ def crystalball_integral(limits, params):
 
             def if_false_1():
                 result_2, = result_3,
-                result_2 += a * abs_sigma / (1.0 - n) * (
-                    1.0 / tf.pow(b - tmin, n - 1.0) - 1.0 / tf.pow(b - tmax, n - 1.0))
+                result_2 += a * abs_sigma / (one - n) * (
+                    one / tf.pow(b - tmin, n - one) - one / tf.pow(b - tmax, n - one))
                 return result_2
 
             result_3 = tf.cond(use_log, if_true_1, if_false_1)
@@ -145,7 +148,7 @@ def crystalball_integral(limits, params):
 
         def if_false_3():
             result_4, = result_6,
-            a = tf.pow(n / abs_alpha, n) * tf.exp(-0.5 * tf.square(abs_alpha))
+            a = tf.pow(n / abs_alpha, n) * tf.exp(-one_half * tf.square(abs_alpha))
             b = n / abs_alpha - abs_alpha
 
             def if_true_2():
@@ -153,8 +156,8 @@ def crystalball_integral(limits, params):
                 return term1
 
             def if_false_2():
-                term1 = a * abs_sigma / (1.0 - n) * (
-                    1.0 / tf.pow(b - tmin, n - 1.0) - 1.0 / tf.pow(n / abs_alpha, n - 1.0))
+                term1 = a * abs_sigma / (one - n) * (
+                    one / tf.pow(b - tmin, n - one) - one / tf.pow(n / abs_alpha, n - one))
                 return term1
 
             term1 = tf.cond(use_log, if_true_2, if_false_2)
@@ -223,7 +226,7 @@ class CrystalBallPDF(BasePDF):
 
 
 crystalball_integral_limits = Space.from_axes(axes=(0,), limits=(((ANY_LOWER,),), ((ANY_UPPER,),)))
-# CrystalBallPDF.register_analytic_integral(func=crystalball_integral, limits=crystalball_integral_limits)
+CrystalBallPDF.register_analytic_integral(func=crystalball_integral, limits=crystalball_integral_limits)
 
 if __name__ == '__main__':
     mu = ztf.constant(0)

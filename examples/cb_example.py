@@ -56,8 +56,9 @@ probs = DoubleCB.pdf(x=np.linspace(5469, 5938, num=1000))
 
 nll = UnbinnedNLL(model=[DoubleCB], data=[data], fit_range=[Bmass])
 # minimize_params = [mu, sigma, a0, a1]
-minimize_params = None
-# tf.gradients(nll.value(), minimize_params)
+# minimize_params = None
+minimize_params = [n0]
+tf.gradients(nll.value(), minimize_params)
 # nll.value()
 # tf.add_check_numerics_ops()
 
