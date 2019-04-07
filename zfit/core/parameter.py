@@ -28,7 +28,7 @@ from ..settings import ztypes
 from tensorflow.python.client.session import register_session_run_conversion_functions
 
 
-def register_tensor_conversion(convertable, overload_operators=True, priority=100):  # higher then any tf conversion
+def register_tensor_conversion(convertable, overload_operators=True, priority=1):  # higher then any tf conversion
     fetch_function = lambda variable: ([variable.read_value()],
                                        lambda val: val[0])
     feed_function = lambda feed, feed_val: [(feed.read_value(), feed_val)]
