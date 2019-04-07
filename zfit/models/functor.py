@@ -231,7 +231,9 @@ class SumPDF(BaseFunctor):
             yields = [pdf.get_yield() for pdf in pdfs]
 
         if extended:
-            yield_fracs = [yield_ / tf.reduce_sum(yields) for yield_ in yields]
+            yields = [tf.convert_to_tensor(yield_) for yield_ in yields]
+            sum_yields = tf.reduce_sum(yields)
+            yield_fracs = [yield_ / sum_yields for yield_ in yields]
             self.fracs = yield_fracs
             # self.fracs = yield_fracs
             set_yield_at_end = True

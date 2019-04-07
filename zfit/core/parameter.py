@@ -25,6 +25,26 @@ from . import baseobject as zbaseobject
 from . import interfaces as zinterfaces
 from ..settings import ztypes
 
+from tensorflow.python.client.session import register_session_run_conversion_functions
+
+
+def register_tensor_conversion(convertable, overload_operators=True, priority=100):  # higher then any tf conversion
+    fetch_function = lambda variable: ([variable.read_value()],
+                                       lambda val: val[0])
+    feed_function = lambda feed, feed_val: [(feed.read_value(), feed_val)]
+    feed_function_for_partial_run = lambda feed: [feed.read_value()]
+
+    register_session_run_conversion_functions(tensor_type=convertable, fetch_function=fetch_function,
+                                              feed_function=feed_function,
+                                              feed_function_for_partial_run=feed_function_for_partial_run)
+
+    def _dense_var_to_tensor(var, dtype=None, name=None, as_ref=False):
+        return var._dense_var_to_tensor(dtype=dtype, name=name, as_ref=as_ref)
+
+    ops.register_tensor_conversion_function(convertable, _dense_var_to_tensor, priority=priority)
+    if overload_operators:
+        convertable._OverloadAllOperators()
+
 
 class MetaBaseParameter(type(TFBaseVariable), type(zinterfaces.ZfitParameter)):  # resolve metaclasses
     pass
@@ -97,14 +117,17 @@ class ZfitBaseVariable(metaclass=type(TFBaseVariable)):
         setattr(ZfitBaseVariable, operator, _run_op)
 
 
-def _dense_var_to_tensor(var, dtype=None, name=None, as_ref=False):
-    return var._dense_var_to_tensor(dtype=dtype, name=name, as_ref=as_ref)
+register_tensor_conversion(ZfitBaseVariable, overload_operators=True)
 
 
-ops.register_tensor_conversion_function(ZfitBaseVariable, _dense_var_to_tensor)
+# def _dense_var_to_tensor(var, dtype=None, name=None, as_ref=False):
+#     return var._dense_var_to_tensor(dtype=dtype, name=name, as_ref=as_ref)
+
+
+# ops.register_tensor_conversion_function(ZfitBaseVariable, _dense_var_to_tensor)
 # ops.register_session_run_conversion_functions()
 
-ZfitBaseVariable._OverloadAllOperators()
+# ZfitBaseVariable._OverloadAllOperators()
 
 
 class ComposedResourceVariable(ResourceVariable):
@@ -123,17 +146,16 @@ class ComposedResourceVariable(ResourceVariable):
 
 
 # class ComposedVariable(tf.Variable, metaclass=type(tf.Variable)):
-class ComposedVariable(ResourceVariable, metaclass=type(tf.Variable)):
+class ComposedVariable(metaclass=type(tf.Variable)):
 
     def __init__(self, name: str, initial_value: tf.Tensor, **kwargs):
         # super().__init__(initial_value=initial_value, **kwargs, use_resource=True)
-        super().__init__(initial_value=initial_value, **kwargs)
+        super().__init__(name=name, **kwargs)
         self._value_tensor = tf.convert_to_tensor(initial_value, preferred_dtype=ztypes.float)
-        # self._name = name
 
-    @property
-    def name(self):
-        return self.op.name
+    #    @property
+    #    def name(self):
+    #        return self._name
 
     @property
     def dtype(self):
@@ -198,28 +220,14 @@ class ComposedVariable(ResourceVariable, metaclass=type(tf.Variable)):
         setattr(ComposedVariable, operator, _run_op)
 
 
-def _dense_var_to_tensor(var, dtype=None, name=None, as_ref=False):
-    return var._dense_var_to_tensor(dtype=dtype, name=name, as_ref=as_ref)
-
-
-ops.register_tensor_conversion_function(ComposedVariable, _dense_var_to_tensor)
-fetch_function = lambda variable: ([variable.read_value()],
-                                   lambda val: val[0])
-feed_function = lambda feed, feed_val: [(feed.read_value(), feed_val)]
-feed_function_for_partial_run = lambda feed: [feed.read_value()]
-
-from tensorflow.python.client.session import register_session_run_conversion_functions
-
 # ops.register_dense_tensor_like_type()
-register_session_run_conversion_functions(tensor_type=ComposedResourceVariable, fetch_function=fetch_function,
-                                          feed_function=feed_function,
-                                          feed_function_for_partial_run=feed_function_for_partial_run)
+# register_session_run_conversion_functions(tensor_type=ComposedResourceVariable, fetch_function=fetch_function,
+#                                           feed_function=feed_function,
+#                                           feed_function_for_partial_run=feed_function_for_partial_run)
 
-register_session_run_conversion_functions(tensor_type=ComposedVariable, fetch_function=fetch_function,
-                                          feed_function=feed_function,
-                                          feed_function_for_partial_run=feed_function_for_partial_run)
 
-ComposedVariable._OverloadAllOperators()
+register_tensor_conversion(convertable=ComposedVariable)
+register_tensor_conversion(convertable=ComposedResourceVariable)
 
 
 class BaseParameter(ZfitParameter, metaclass=MetaBaseParameter):
@@ -568,6 +576,9 @@ class ComplexParameter(ComposedParameter):
             arg = tf.math.atan(self.imag / self.real)
         return arg
 
+
+register_tensor_conversion(ComposedParameter, overload_operators=False)
+register_tensor_conversion(ComplexParameter, overload_operators=False)
 
 _auto_number = 0
 
